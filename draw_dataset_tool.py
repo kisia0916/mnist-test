@@ -5,8 +5,8 @@ from pathlib import Path
 import numpy as np
 
 
-GRID_SIZE = 8
-CELL_SIZE = 56
+GRID_SIZE = 28
+CELL_SIZE = 20
 CANVAS_SIZE = GRID_SIZE * CELL_SIZE
 DATASET_FILE = Path("digits_dataset_drawn.csv")
 
@@ -14,7 +14,7 @@ DATASET_FILE = Path("digits_dataset_drawn.csv")
 class DigitDatasetTool:
     def __init__(self, master: tk.Tk) -> None:
         self.master = master
-        self.master.title("MNIST 8x8 Data Creator")
+        self.master.title("MNIST 28x28 Data Creator")
         self.master.resizable(False, False)
 
         self.values = np.zeros((GRID_SIZE, GRID_SIZE), dtype=np.float32)
@@ -60,7 +60,7 @@ class DigitDatasetTool:
             pady=(10, 0),
         )
 
-        tk.Button(root, text="64要素配列を表示", width=20, command=self.show_flattened_array).grid(
+        tk.Button(root, text="784要素配列を表示", width=20, command=self.show_flattened_array).grid(
             row=3,
             column=0,
             columnspan=4,
@@ -145,7 +145,7 @@ class DigitDatasetTool:
         return label
 
     def to_column_flattened(self) -> list[float]:
-        # 行優先で結合: row0の左→右, row1の左→右, ... の順で64要素にする。
+        # 行優先で結合: row0の左→右, row1の左→右, ... の順で784要素にする。
         return self.values.flatten().astype(float).tolist()
 
     def show_flattened_array(self) -> None:
@@ -158,8 +158,8 @@ class DigitDatasetTool:
         if label is None:
             return
 
-        arr64 = self.to_column_flattened()
-        row = arr64 + [label]
+        arr784 = self.to_column_flattened()
+        row = arr784 + [label]
 
         with DATASET_FILE.open("a", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)

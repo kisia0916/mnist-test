@@ -2,6 +2,13 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import random
 
+
+def infer_side_length(feature_count):
+    side = int(feature_count**0.5)
+    if side * side != feature_count:
+        return None
+    return side
+
 def visualize_dataset(csv_file, num_to_show=25):
     """
     保存されたCSVデータを読み込み、タイル状に並べて表示する
@@ -12,6 +19,16 @@ def visualize_dataset(csv_file, num_to_show=25):
         print(f"'{csv_file}' を読み込みました。データ数: {len(df)}")
     except FileNotFoundError:
         print(f"エラー: '{csv_file}' が見つかりません。先にデータ生成スクリプトを実行してください。")
+        return
+
+    if len(df) == 0:
+        print("エラー: データが空です。")
+        return
+
+    feature_count = df.shape[1] - 1
+    side = infer_side_length(feature_count)
+    if side is None:
+        print(f"エラー: 特徴量数 {feature_count} は正方画像に変換できません。")
         return
 
     # 全データからランダムに抽出
@@ -31,10 +48,10 @@ def visualize_dataset(csv_file, num_to_show=25):
     for i, (index, row) in enumerate(sample_data.iterrows()):
         ax = axes[i // cols, i % cols]
         
-        # 最初の64個を取り出して 8x8 に整形
-        pixels = row[:64].values.reshape(8, 8)
-        # 65個目をラベル（正解）として取得
-        label = int(row[64])
+        # 特徴量を取り出して side x side に整形
+        pixels = row.iloc[:-1].values.reshape(side, side)
+        # 最後の列をラベル（正解）として取得
+        label = int(row.iloc[-1])
         
         # 描画（白黒反転 'gray_r' で手書き風に）
         ax.imshow(pixels, cmap='gray_r', interpolation='nearest')

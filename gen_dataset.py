@@ -2,6 +2,10 @@ import numpy as np
 import pandas as pd
 import random
 
+
+SRC_SIZE = 8
+DST_SIZE = 28
+
 def generate_handwritten_data(samples_per_digit=100):
     dataset = []
     
@@ -22,24 +26,34 @@ def generate_handwritten_data(samples_per_digit=100):
     for digit in range(10):
         base = base_patterns[digit]
         for _ in range(samples_per_digit):
-            # 64マスの真っ白なキャンバス
-            img = np.zeros(64)
+            # 8x8の真っ白なキャンバス
+            img_8 = np.zeros((SRC_SIZE, SRC_SIZE), dtype=np.float32)
             
             # 基本骨格に値をセット
             for pos in base:
-                if 0 <= pos < 64:
+                if 0 <= pos < SRC_SIZE * SRC_SIZE:
                     # 筆圧のばらつき (0.7〜1.0)
-                    img[pos] = random.uniform(0.7, 1.0)
+                    r = pos // SRC_SIZE
+                    c = pos % SRC_SIZE
+                    img_8[r, c] = random.uniform(0.7, 1.0)
             
             # 手書きらしいノイズと「揺れ」を追加
             # 1. 全体に薄いノイズ
-            img += np.random.normal(0, 0.05, 64)
+            img_8 += np.random.normal(0, 0.05, img_8.shape)
             # 2. ランダムな位置にドットを追加
             for _ in range(3):
-                img[random.randint(0, 63)] += random.uniform(0, 0.3)
+                rr = random.randint(0, SRC_SIZE - 1)
+                cc = random.randint(0, SRC_SIZE - 1)
+                img_8[rr, cc] += random.uniform(0, 0.3)
             
             # 0〜1の範囲にクリップ
-            img = np.clip(img, 0, 1)
+            img_8 = np.clip(img_8, 0, 1)
+
+            # 8x8を28x28へ拡大（最近傍補間）
+            y_idx = np.round(np.linspace(0, SRC_SIZE - 1, DST_SIZE)).astype(int)
+            x_idx = np.round(np.linspace(0, SRC_SIZE - 1, DST_SIZE)).astype(int)
+            img_28 = img_8[y_idx][:, x_idx]
+            img = img_28.flatten()
             
             # 最後にラベル（正解）を結合
             data_row = np.append(img, digit)

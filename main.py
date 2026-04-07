@@ -3,12 +3,17 @@ import random
 import numpy as np
 import json
 
-GRID_NUM = 64
+#ベンチマーク用
+from tensorflow.keras.datasets import mnist
+
+
+GRID_NUM = 784
 HIDDEN_LAYER_NUM = 2
 HIDDEN_LAYER_NODE_NUM = 16
-FIRST_LAYER_DIMENSTION = 64
+FIRST_LAYER_DIMENSTION = 784
 NORM_LAYER_DIMENSTION = 16
 STUDY_RATE = 0.001
+TRAIN_EPOCHS = 50
 ans_weight = []
 hidden_layer = []
 biases = []
@@ -111,13 +116,19 @@ def load_digits_data(file_path):
         return None, None
 
     raw_data = np.atleast_2d(raw_data)
-    if raw_data.shape[1] < 65:
-        print("エラー: CSVの列数が不足しています。65列(64特徴量+1ラベル)必要です。")
+    if raw_data.shape[1] < 2:
+        print("エラー: CSVの列数が不足しています。")
         return None, None
 
-    X = raw_data[:, :64]
+    feature_count = raw_data.shape[1] - 1
+    if feature_count != FIRST_LAYER_DIMENSTION:
+        print(
+            f"エラー: 特徴量次元が不一致です。期待値={FIRST_LAYER_DIMENSTION}, 実データ={feature_count}"
+        )
+        return None, None
 
-    y = raw_data[:, 64].astype(np.int32)
+    X = raw_data[:, :-1]
+    y = raw_data[:, -1].astype(np.int32)
     return X, y
 
 
@@ -160,20 +171,23 @@ def load_weights(file_path="model_weights.json"):
 
 def run_1():        
     gen_random_weight()
+    gen_random_bias()
     X, y = load_digits_data("digits_dataset.csv")
-    for i in range(100):
+    for i in range(TRAIN_EPOCHS):
         indices = np.arange(X.shape[0])
         np.random.shuffle(indices)
         X = X[indices]
         y = y[indices]
+        correct_count = 0
         for s in range(len(X)):
             input = X[s]
             result,layer_1_result,layer_2_result = forward(input)
             ans = one_hot_encoding(y[s])
-            print(f"prediction_result: {result.index(max(result))}")
-            print(f"correct_ans: {y[s]}")
+            if result.index(max(result)) == y[s]:
+                correct_count += 1
             train(input,layer_1_result,layer_2_result,result,ans)
         print(f"============TEST CASE {i} DONE============")
+        print(f"correct_rate: {correct_count/len(X)*100:.2f}%")
     save_weights()
 
 
@@ -185,4 +199,66 @@ def run_2():
         result,layer_1_result,layer_2_result = forward(input)
         print(f"prediction_result: {result.index(max(result))}")
         print(f"correct_ans: {y[s]}")
-run_2()
+
+def benchmark_mnist():
+
+    def bar(rate, width=28):
+        n = int(max(0.0, min(1.0, rate)) * width)
+        return "#" * n + "-" * (width - n)
+
+    def section(title):
+        line = "=" * 68
+        print(f"\n{line}\n{title}\n{line}")
+
+    (X_train, y_train), (X_test, y_test) = mnist.load_data()
+    X_train = X_train.reshape(-1, 784).astype(np.float32) / 255.0
+    X_test = X_test.reshape(-1, 784).astype(np.float32) / 255.0
+    gen_random_weight()
+    gen_random_bias()
+
+    section("MNIST BENCHMARK START")
+    print(
+        f"train={len(X_train)} / test={len(X_test)} / "
+        f"features={X_train.shape[1]} / epochs={TRAIN_EPOCHS} / lr={STUDY_RATE}"
+    )
+
+
+    last_train_acc = 0.0
+
+    for i in range(TRAIN_EPOCHS):
+        indices = np.arange(X_train.shape[0])
+        np.random.shuffle(indices)
+        X_train = X_train[indices]
+        y_train = y_train[indices]
+        correct_count = 0
+        for s in range(len(X_train)):
+            input = X_train[s]
+            result,layer_1_result,layer_2_result = forward(input)
+            ans = one_hot_encoding(y_train[s])
+            if result.index(max(result)) == y_train[s]:
+                correct_count += 1
+            train(input,layer_1_result,layer_2_result,result,ans)
+
+        last_train_acc = correct_count / len(X_train)
+        print(
+            f"[Epoch {i + 1:02d}/{TRAIN_EPOCHS:02d}] "
+            f"train_acc={last_train_acc * 100:6.2f}% "
+            f"[{bar(last_train_acc)}] "
+        )
+
+
+    section("EVALUATION")
+    correct_count = 0
+    for s in range(len(X_test)):
+        input = X_test[s]
+        result,layer_1_result,layer_2_result = forward(input)
+        if result.index(max(result)) == y_test[s]:
+            correct_count += 1
+
+    save_weights()
+
+    section("BENCHMARK RESULT")
+    print(f"epochs_done     : {TRAIN_EPOCHS}")
+    print(f"final_train_acc : {last_train_acc * 100:6.2f}%")
+    print(f"final_test_acc  : {correct_count / len(X_test) * 100:6.2f}%")
+benchmark_mnist()
