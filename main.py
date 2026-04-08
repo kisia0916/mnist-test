@@ -2,6 +2,7 @@ import random
 #dataset読み込み用
 import numpy as np
 import json
+import matplotlib.pyplot as plt
 
 #ベンチマーク用
 from tensorflow.keras.datasets import mnist
@@ -193,12 +194,14 @@ def run_1():
 
 def run_2():
     load_weights()
-    X, y = load_digits_data("digits_dataset_drawn.csv")
-    for s in range(len(X)):
-        input = X[s]
+    (X_train, y_train), (X_test, y_test) = mnist.load_data()
+    X_train = X_train.reshape(-1, 784).astype(np.float32) / 255.0
+    X_test = X_test.reshape(-1, 784).astype(np.float32) / 255.0
+    for s in range(len(X_test)):
+        input = X_test[s]
         result,layer_1_result,layer_2_result = forward(input)
         print(f"prediction_result: {result.index(max(result))}")
-        print(f"correct_ans: {y[s]}")
+        print(f"correct_ans: {y_test[s]}")
 
 def benchmark_mnist():
 
@@ -224,6 +227,7 @@ def benchmark_mnist():
 
 
     last_train_acc = 0.0
+    train_acc_history = []
 
     for i in range(TRAIN_EPOCHS):
         indices = np.arange(X_train.shape[0])
@@ -240,6 +244,7 @@ def benchmark_mnist():
             train(input,layer_1_result,layer_2_result,result,ans)
 
         last_train_acc = correct_count / len(X_train)
+        train_acc_history.append(last_train_acc)
         print(
             f"[Epoch {i + 1:02d}/{TRAIN_EPOCHS:02d}] "
             f"train_acc={last_train_acc * 100:6.2f}% "
@@ -261,4 +266,22 @@ def benchmark_mnist():
     print(f"epochs_done     : {TRAIN_EPOCHS}")
     print(f"final_train_acc : {last_train_acc * 100:6.2f}%")
     print(f"final_test_acc  : {correct_count / len(X_test) * 100:6.2f}%")
-benchmark_mnist()
+
+    graph_file = "train_accuracy_transition.png"
+    try:
+        epochs = np.arange(1, len(train_acc_history) + 1)
+        plt.figure(figsize=(9, 5))
+        plt.plot(epochs, np.array(train_acc_history) * 100.0, marker="o", linewidth=2)
+        plt.title("Train Accuracy Transition")
+        plt.xlabel("Epoch")
+        plt.ylabel("Train Accuracy (%)")
+        plt.ylim(0, 100)
+        plt.grid(True, linestyle="--", alpha=0.35)
+        plt.tight_layout()
+        plt.savefig(graph_file, dpi=140)
+        plt.close()
+        print(f"train accuracy graph saved: {graph_file}")
+    except Exception as e:
+        print(f"train accuracy graph output failed: {e}")
+# benchmark_mnist()
+run_2()
